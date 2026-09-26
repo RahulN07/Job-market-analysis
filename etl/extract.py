@@ -1118,25 +1118,20 @@ print(
 # ============================================================
 # 22. LOCATION CLEANING
 # ============================================================
-
 print("\n" + "=" * 70)
 print("21. LOCATION CLEANING")
 print("=" * 70)
 
 location_columns = [
-
     "city",
     "country",
     "location_resolved",
     "locations",
     "remote_eligibility_regions",
-
 ]
 
 for column in location_columns:
-
     if column in cleaned_jobs.columns:
-
         cleaned_jobs[column] = (
             cleaned_jobs[column]
             .astype("string")
@@ -1145,16 +1140,557 @@ for column in location_columns:
 
         cleaned_jobs[column] = (
             cleaned_jobs[column]
-            .replace(
-                "",
-                pd.NA
-            )
+            .replace("", pd.NA)
         )
 
-print(
-    "Location fields cleaned."
+print("Location fields cleaned.")
+
+
+# ============================================================
+# 22A. COUNTRY NORMALIZATION
+# ============================================================
+
+print("\n" + "=" * 60)
+print("22A. COUNTRY NORMALIZATION")
+print("=" * 60)
+
+
+# ------------------------------------------------------------
+# Step 1: Normalize obvious country names and ISO codes
+# ------------------------------------------------------------
+
+country_mapping = {
+    # United States
+    "USA": "United States",
+    "US": "United States",
+    "U.S": "United States",
+    "United States of America": "United States",
+    "UnitedStates": "United States",
+    "US - Remote": "United States",
+    "US Offsite": "United States",
+
+    # United Kingdom
+    "UK": "United Kingdom",
+    "GB": "United Kingdom",
+    "GBR": "United Kingdom",
+
+    # India
+    "IN": "India",
+    "IND": "India",
+    "INDIA": "India",
+
+    # Canada
+    "CAN": "Canada",
+    "CANADA": "Canada",
+
+    # France
+    "FR": "France",
+    "FRA": "France",
+    "FRANCE": "France",
+
+    # Germany
+    "DE": "Germany",
+    "DEU": "Germany",
+    "GER": "Germany",
+    "Deutschland": "Germany",
+
+    # Netherlands
+    "NL": "Netherlands",
+
+    # Mexico
+    "MX": "Mexico",
+    "MEX": "Mexico",
+
+    # Singapore
+    "SG": "Singapore",
+    "SGP": "Singapore",
+
+    # Ireland
+    "IE": "Ireland",
+    "IRL": "Ireland",
+
+    # Australia
+    "AU": "Australia",
+    "AUS": "Australia",
+
+    # Turkey
+    "TR": "Turkey",
+
+    # Romania
+    "RO": "Romania",
+    "ROU": "Romania",
+
+    # Denmark
+    "DK": "Denmark",
+
+    # Spain
+    "ES": "Spain",
+    "ESP": "Spain",
+
+    # Peru
+    "PE": "Peru",
+
+    # South Korea
+    "KR": "South Korea",
+
+    # Hong Kong
+    "HK": "Hong Kong",
+
+    # Belgium
+    "BE": "Belgium",
+
+    # Switzerland
+    "CH": "Switzerland",
+
+    # Colombia
+    "CO": "Colombia",
+    "COL": "Colombia",
+
+    # Norway
+    "NO": "Norway",
+
+    # Japan
+    "JP": "Japan",
+
+    # Finland
+    "FI": "Finland",
+
+    # Philippines
+    "PH": "Philippines",
+    "PHL": "Philippines",
+
+    # New Zealand
+    "NZ": "New Zealand",
+
+    # Indonesia
+    "ID": "Indonesia",
+
+    # Greece
+    "GR": "Greece",
+
+    # Malaysia
+    "MY": "Malaysia",
+
+    # Austria
+    "AT": "Austria",
+
+    # Ukraine
+    "UA": "Ukraine",
+
+    # Costa Rica
+    "CR": "Costa Rica",
+
+    # Taiwan
+    "TW": "Taiwan",
+
+    # Hungary
+    "HU": "Hungary",
+
+    # Luxembourg
+    "LU": "Luxembourg",
+    "LUX": "Luxembourg",
+
+    # China
+    "CN": "China",
+    "CHN": "China",
+
+    # Thailand
+    "TH": "Thailand",
+    "THA": "Thailand",
+
+    # Qatar
+    "QA": "Qatar",
+
+    # Argentina
+    "AR": "Argentina",
+    "ARG": "Argentina",
+
+    # Latvia
+    "LV": "Latvia",
+
+    # Egypt
+    "EG": "Egypt",
+
+    # Puerto Rico
+    "PR": "Puerto Rico",
+
+    # Czech Republic
+    "CZ": "Czech Republic",
+    "CZE": "Czech Republic",
+
+    # Poland
+    "PL": "Poland",
+
+    # United Arab Emirates
+    "AE": "United Arab Emirates",
+
+    # Bulgaria
+    "BG": "Bulgaria",
+
+    # Brazil
+    "BR": "Brazil",
+    "BRA": "Brazil",
+
+    # Democratic Republic of Congo
+    "CD": "Democratic Republic of the Congo",
+    "DRC": "Democratic Republic of the Congo",
+
+    # Dominican Republic
+    "DO": "Dominican Republic",
+    "DR": "Dominican Republic",
+
+    # Georgia
+    "GE": "Georgia",
+
+    # Guatemala
+    "GT": "Guatemala",
+
+    # Lithuania
+    "LT": "Lithuania",
+
+    # Malta
+    "MT": "Malta",
+
+    # United States state abbreviations
+    # These are handled separately below because they
+    # are NOT countries.
+}
+
+
+# Apply safe country-name / ISO-code mappings
+cleaned_jobs["country"] = (
+    cleaned_jobs["country"]
+    .astype("string")
+    .str.strip()
+    .replace(country_mapping)
 )
 
+
+# ------------------------------------------------------------
+# Step 2: Correct Canadian province codes
+# ------------------------------------------------------------
+
+canadian_provinces = {
+    "AB",
+    "BC",
+    "MB",
+    "NB",
+    "NL",
+    "NS",
+    "ON",
+    "QC",
+    "SK",
+}
+
+cleaned_jobs.loc[
+    cleaned_jobs["country"].isin(canadian_provinces),
+    "country"
+] = "Canada"
+
+
+# ------------------------------------------------------------
+# Step 3: Correct obvious U.S. state codes
+# ------------------------------------------------------------
+
+us_states = {
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE",
+    "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS",
+    "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS",
+    "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY",
+    "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+    "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV",
+    "WI", "WY", "DC"
+}
+
+
+# U.S. state codes except CA are unambiguous.
+us_states_without_ca = us_states - {"CA"}
+
+cleaned_jobs.loc[
+    cleaned_jobs["country"].isin(us_states_without_ca),
+    "country"
+] = "United States"
+
+
+# ------------------------------------------------------------
+# Step 4: Resolve CA using location_resolved
+# ------------------------------------------------------------
+
+# CA is ambiguous:
+#
+# Toronto,ON,CA       -> Canada
+# Calgary,AB,CA       -> Canada
+# Mountain View, CA   -> United States
+# San Francisco, CA   -> United States
+#
+# Therefore we inspect location_resolved.
+
+location_text = (
+    cleaned_jobs["location_resolved"]
+    .astype("string")
+    .str.upper()
+    .str.strip()
+)
+
+
+canada_province_codes = r"(AB|BC|MB|NB|NL|NS|ON|PE|QC|SK)"
+
+canada_location_mask = (
+    location_text.str.contains(
+        rf",\s*{canada_province_codes}\s*(,\s*CA)?$",
+        regex=True,
+        na=False
+    )
+    |
+    location_text.str.contains(
+        r",\s*CA$",
+        regex=True,
+        na=False
+    )
+    & location_text.str.contains(
+        r"(TORONTO|CALGARY|REGINA|MONTREAL|MONTR[EÉ]AL|OTTAWA|VANCOUVER|"
+        r"EDMONTON|SASKATOON|WINNIPEG|QUEBEC|MISSISSAUGA|HALIFAX)",
+        regex=True,
+        na=False
+    )
+)
+
+
+cleaned_jobs.loc[
+    (cleaned_jobs["country"] == "CA") & canada_location_mask,
+    "country"
+] = "Canada"
+
+
+# Remaining CA values with U.S.-style locations
+cleaned_jobs.loc[
+    (cleaned_jobs["country"] == "CA")
+    & location_text.str.contains(
+        r",\s*(CA|FL|TX|NY|VA|WA|OR|AZ|CO|IL|GA|NC|SC|OH|PA|MA|NJ|MD|MN|MI|TN|NV|UT|CT)\s*$",
+        regex=True,
+        na=False
+    ),
+    "country"
+] = "United States"
+
+
+# ------------------------------------------------------------
+# Step 5: Resolve "Remote" from location_resolved
+# ------------------------------------------------------------
+
+remote_mask = cleaned_jobs["country"].eq("Remote")
+
+remote_location = (
+    cleaned_jobs.loc[remote_mask, "location_resolved"]
+    .astype("string")
+    .str.strip()
+)
+
+
+# Extract obvious country from "Country,Remote"
+remote_country_mapping = {
+    "China": "China",
+    "United States": "United States",
+    "USA": "United States",
+    "Spain": "Spain",
+    "Argentina": "Argentina",
+    "Brazil": "Brazil",
+    "Canada": "Canada",
+    "Croatia": "Croatia",
+    "Cyprus": "Cyprus",
+    "Germany": "Germany",
+    "India": "India",
+    "Ireland": "Ireland",
+    "South Africa": "South Africa",
+}
+
+
+for source_country, normalized_country in remote_country_mapping.items():
+
+    mask = (
+        remote_mask
+        & cleaned_jobs["location_resolved"]
+        .astype("string")
+        .str.contains(
+            rf"^{source_country}\s*,?\s*Remote$",
+            case=False,
+            regex=True,
+            na=False
+        )
+    )
+
+    cleaned_jobs.loc[mask, "country"] = normalized_country
+
+
+# More complex remote locations
+remote_location_text = (
+    cleaned_jobs["location_resolved"]
+    .astype("string")
+    .str.upper()
+)
+
+
+cleaned_jobs.loc[
+    remote_mask
+    & remote_location_text.str.contains(
+        r"(UNITED STATES|USA|US,)",
+        regex=True,
+        na=False
+    ),
+    "country"
+] = "United States"
+
+
+cleaned_jobs.loc[
+    remote_mask
+    & remote_location_text.str.contains(
+        r"\bCANADA\b",
+        regex=True,
+        na=False
+    ),
+    "country"
+] = "Canada"
+
+
+# ------------------------------------------------------------
+# Step 6: Remove regional / non-country values
+# ------------------------------------------------------------
+
+non_country_values = {
+    "Remote",
+    "Europe",
+    "Asia",
+    "Africa",
+    "North America",
+    "North America and Canada",
+    "South America",
+    "Southeast Asia",
+    "Southern Europe",
+    "Western Europe",
+    "Northern Europe",
+    "Asia Pacific",
+    "European Union",
+    "West Africa",
+    "Eng",
+}
+
+cleaned_jobs.loc[
+    cleaned_jobs["country"].isin(non_country_values),
+    "country"
+] = pd.NA
+
+
+# ------------------------------------------------------------
+# Step 7: Remove obvious location contamination
+# ------------------------------------------------------------
+
+# These are not country names.
+obvious_bad_country_values = {
+    "City - Remote MN",
+    "AZ - Remote",
+    "Ohio (Remote)",
+    "BCN",
+    "Σ╕¡σ¢╜",
+}
+
+cleaned_jobs.loc[
+    cleaned_jobs["country"].isin(obvious_bad_country_values),
+    "country"
+] = pd.NA
+
+# ------------------------------------------------------------
+# Step 7A: Fix numeric postal codes stored as country values
+# ------------------------------------------------------------
+
+# Numeric-only values such as 06600, 11320, 28273, etc.
+# are postal/ZIP codes, not country names.
+
+numeric_country_mask = (
+    cleaned_jobs["country"]
+    .astype("string")
+    .str.strip()
+    .str.fullmatch(r"\d+", na=False)
+)
+
+numeric_location_text = (
+    cleaned_jobs["location_resolved"]
+    .astype("string")
+    .str.upper()
+    .str.strip()
+)
+
+# Infer country from location_resolved where possible.
+cleaned_jobs.loc[
+    numeric_country_mask
+    & numeric_location_text.str.contains(
+        r"(MEXICO|MÉXICO|CIUDAD DE MEXICO|CIUDAD DE MÉXICO)",
+        regex=True,
+        na=False
+    ),
+    "country"
+] = "Mexico"
+
+cleaned_jobs.loc[
+    numeric_country_mask
+    & numeric_location_text.str.contains(
+        r"(UNITED STATES|USA|UNITED STATES OF AMERICA)",
+        regex=True,
+        na=False
+    ),
+    "country"
+] = "United States"
+
+cleaned_jobs.loc[
+    numeric_country_mask
+    & numeric_location_text.str.contains(
+        r"\bSINGAPORE\b",
+        regex=True,
+        na=False
+    ),
+    "country"
+] = "Singapore"
+
+# Any remaining numeric-only country values are invalid
+# because they are not country names.
+remaining_numeric_country_mask = (
+    cleaned_jobs["country"]
+    .astype("string")
+    .str.strip()
+    .str.fullmatch(r"\d+", na=False)
+)
+
+cleaned_jobs.loc[
+    remaining_numeric_country_mask,
+    "country"
+] = pd.NA
+
+# ------------------------------------------------------------
+# Step 8: Final country cleanup
+# ------------------------------------------------------------
+
+cleaned_jobs["country"] = (
+    cleaned_jobs["country"]
+    .astype("string")
+    .str.strip()
+)
+
+cleaned_jobs.loc[
+    cleaned_jobs["country"].isin(["", "NA", "N/A", "NONE", "NULL"]),
+    "country"
+] = pd.NA
+
+
+# ------------------------------------------------------------
+# Country normalization summary
+# ------------------------------------------------------------
+
+print("\nTop 30 countries after normalization:")
+
+print(
+    cleaned_jobs["country"]
+    .value_counts(dropna=False)
+    .head(30)
+)
 
 # ============================================================
 # 23. LATITUDE / LONGITUDE VALIDATION
